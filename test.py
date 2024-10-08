@@ -1,5 +1,9 @@
 import torch
 import numpy
+import matplotlib
+from tkinter import *
+from tkinter import ttk
+matplotlib.use('tkAgg')  # 使用非交互式后端
 from torch.utils.data import DataLoader
 from torchvision import transforms,datasets
 from torchvision.datasets import MNIST
@@ -20,7 +24,7 @@ class Net(torch.nn.Module):
         return x
 
 def get_data_loader(is_train):
-    to_tensor =transforms.Compose([transforms.ToTensor])
+    to_tensor =transforms.Compose([transforms.ToTensor()])
     data_set=MNIST("",is_train,transform=to_tensor,download=True)
     return DataLoader(data_set,batch_size=15,shuffle=True)
 
@@ -58,6 +62,6 @@ def main():
         plt.figure(n)
         plt.imshow(x[0].view(28,28))
         plt.title("prediction:"+str(int(predict)))
-    plt.show()
+        plt.show()
 if __name__=="__main__":
     main()
