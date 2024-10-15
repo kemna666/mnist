@@ -1,67 +1,44 @@
 import torch
-import numpy
-import matplotlib
-from tkinter import *
-from tkinter import ttk
-matplotlib.use('tkAgg')  # 使用非交互式后端
-from torch.utils.data import DataLoader
-from torchvision import transforms,datasets
-from torchvision.datasets import MNIST
-import matplotlib.pyplot as plt
-data_tf=transforms.Compose([transforms.ToTensor(),transforms.Normalize([0.5],[0.5])])
-class Net(torch.nn.Module):
-    def __init__(self):
-        super(Net,self).__init__()
-        self.fc1=torch.nn.Linear(28*28,64)
-        self.fc2=torch.nn.Linear(64,64)
-        self.fc3=torch.nn.Linear(64,64)
-        self.fc4=torch.nn.Linear(64,10)
-    def forward(self,x):
-        x=torch.nn.functional.relu(self.fc1(x))
-        x=torch.nn.functional.relu(self.fc2(x))
-        x=torch.nn.functional.relu(self.fc3(x))
-        x=torch.nn.functional.log_softmax(self.fc4(x),dim=1)
-        return x
+from ultralytics import YOLO
+from ultralytics import settings
+import cv2
+#画框
+def drawBox(data,image,name):
+    x1, y1, x2, y2, conf, id = data
+    p1 = (int(x1), int(y1))
+    p2 = (int(x2), int(y2))
+    cv2.rectangle(image, p1, p2, (0, 0, 255), 3)
+    cv2.putText(image, name, p1, cv2.FONT_HERSHEY_SIMPLEX, 3, (0, 0, 255), 3)
+    return image
+detection_classes=[] 
+#设置路径
+settings.update({'runs_dir':'./'})
+#加载模型
+model = YOLO('yolov8n.yaml')#加载新模型
+model.load('yolov8n.pt')
+#训练模型
+result=model.train(data='coco128.yaml',epochs=10,imgsz=640,device=0)
+# 验证模型
+metrics = model.val()  # 无需参数，数据集和设置记忆
+metrics.box.map    # map50-95
+metrics.box.map50  # map50
+metrics.box.map75  # map75
+metrics.box.maps   # 包含每个类别的map50-95列表
 
-def get_data_loader(is_train):
-    to_tensor =transforms.Compose([transforms.ToTensor()])
-    data_set=MNIST("",is_train,transform=to_tensor,download=True)
-    return DataLoader(data_set,batch_size=15,shuffle=True)
+#加载opencv视频流
 
-def evaluate(test_data,net):
-    n_correct=0
-    n_total=1
-    with torch.no_grad():
-        for (x,y) in test_data:
-            outputs=net.forward(x.view(-1,28*28))
-            for i,output in enumerate(outputs):
-                if torch.argmax(output)== y[i]:
-                    n_correct+=1
-                n_total+=1
-    return n_correct/n_total
-        
-def main():
-    train_data =get_data_loader(is_train=True)
-
-    test_data =get_data_loader(is_train=False)
-    net =Net()
-    print("initial caauracy",evaluate(test_data,net))
-    optimizer = torch.optim.Adam(net.parameters(),lr=0.001)
-    for epoch in range(2):
-        for (x,y) in train_data:
-            net.zero_grad()
-            output=net.forward(x.view(-1,28*28))
-            loss=torch.nn.functional.nll_loss(output,y)
-            loss.backward()
-            optimizer.step()
-        print("epoch",epoch,"accuracy:",evaluate(test_data,net))
-    for (n,(x,_)) in enumerate(test_data):
-        if n>3:
+video  = cv2.VideoCapture()
+while True:
+        (grabbed,frame) = video.read()
+        if not grabbed:
             break
-        predict=torch.argmax(net.forward(x[0].view(-1,28*28)))
-        plt.figure(n)
-        plt.imshow(x[0].view(28,28))
-        plt.title("prediction:"+str(int(predict)))
-        plt.show()
-if __name__=="__main__":
-    main()
+        results = model.predict(frame,stream=False)
+        cv2.imshow('image', frame)
+        cv2.waitKey(500)
+
+results = model.predict(frame,stream=False)
+for result in results:
+     for data in result.boxes.data.tolist():
+           #print(data)
+           id = data[5]
+           drawBox(data, frame,detection_classes[id])
