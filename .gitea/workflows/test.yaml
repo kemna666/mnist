@@ -1,7 +1,7 @@
 on: push
 jobs:
     job1:
-      runs-on: ubuntu-latest
+      runs-on: debian-latest
       steps:
       - name: 跑模型
       - uses: https://eoelab.org:1027/actions/checkout@v4
