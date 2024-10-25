@@ -6,6 +6,4 @@ jobs:
       - run: sudo apt install python3-pip
       - run: pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
       - run: pip install torch torchvision tqdm
-      
-      
       - run: python3 ./main.py 
