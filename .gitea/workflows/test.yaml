@@ -1,0 +1,6 @@
+on push:
+  jobs:
+    runs-on: debian-latest
+    steps:
+    - uses: https://eoelab.org:1027/actions/checkout@v4
+    - run: python3 ./main.py 
