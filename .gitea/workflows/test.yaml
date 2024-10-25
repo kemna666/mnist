@@ -2,6 +2,5 @@ on: push
 jobs:
     job1:
       steps:
-      - name: 跑模型
       - uses: https://eoelab.org:1027/actions/checkout@v4
       - run: python3 ./main.py 
