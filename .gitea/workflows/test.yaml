@@ -4,6 +4,7 @@ jobs:
       steps:
       - uses: https://eoelab.org:1027/actions/checkout@v4
       - run: sudo apt install python3-pip
+      - run: pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
       - run: pip install torch torchvision tqdm
       
       
