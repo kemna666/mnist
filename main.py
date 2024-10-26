@@ -68,7 +68,7 @@ net = Net().to(device)
 lossF = torch.nn.CrossEntropyLoss()
 optimizer = torch.optim.Adam(net.parameters())
 #循环训练
-Epochs=2048
+Epochs=100
 for epochs in range(0,Epochs):
     #训练内容
     processBar = tqdm(TrainDataLoader,unit = 'step')
