@@ -51,7 +51,7 @@ class Net(torch.nn.Module):
             #The size of the picture is 7x7
             torch.nn.Conv2d(in_channels = 32,out_channels = 64,kernel_size = 3,stride = 1,padding = 1),
             torch.nn.ReLU(),
-            
+
             torch.nn.Flatten(),
             torch.nn.Linear(in_features = 7 * 7 * 64,out_features = 128),
             torch.nn.ReLU(),
@@ -68,7 +68,7 @@ net = Net().to(device)
 lossF = torch.nn.CrossEntropyLoss()
 optimizer = torch.optim.Adam(net.parameters())
 #循环训练
-Epochs=100
+Epochs=54
 for epochs in range(0,Epochs):
     #训练内容
     processBar = tqdm(TrainDataLoader,unit = 'step')
@@ -86,22 +86,4 @@ for epochs in range(0,Epochs):
         processBar.set_description("[%d/%d] Loss: %.4f, Acc: %.4f" % 
                                    (epochs,Epochs,loss.item(),accuracy.item()))
         
-        if step == len(processBar)-1:
-            correct,totalLoss = 0,0
-            net.train(False)
-            for testImgs,labels in TestDataLoader:
-                testImgs = testImgs.to(device)
-                labels = labels.to(device)
-                outputs = net(testImgs)
-                loss = lossF(outputs,labels)
-                predictions = torch.argmax(outputs,dim = 1)
-                
-                totalLoss += loss
-                correct += torch.sum(predictions == labels)
-            testAccuracy = correct/(BATCH_SIZE * len(TestDataLoader))
-            testLoss = totalLoss/len(TestDataLoader)
-            history['Test Loss'].append(testLoss.item())
-            history['Test Accuracy'].append(testAccuracy.item())
-            processBar.set_description("[%d/%d] Loss: %.4f, Acc: %.4f, Test Loss: %.4f, Test Acc: %.4f" % 
-                                   (epochs,Epochs,loss.item(),accuracy.item(),testLoss.item(),testAccuracy.item()))
-    processBar.close()
+        
