@@ -2,20 +2,11 @@
 import torch 
 import torch.utils
 import torch.utils.data
-import torch.utils.data.dataloader
+from torch.utils.data import DataLoader
 import torchvision
 from tqdm import tqdm
 import matplotlib
 
-#进行数据预处理
-#初始化存储训练和测试损失与准确率的字典
-history = {
-    'Train Loss': [],
-    'Train Accuracy': [],
-    'Test Loss': [],
-    'Test Accuracy': []
-}
-#将训练设备设置为GPU
 device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
 #使用torchvisiom.transform将图片转换为张量
 transform =torchvision.transforms.Compose([torchvision.transforms.ToTensor(),torchvision.transforms.Normalize(mean=[0.5],std=[0.5])])
@@ -26,64 +17,84 @@ path ='./MNIST'
 trainData=torchvision.datasets.MNIST(path,train=True,transform=transform,download=True)
 #下载测试集
 testData=torchvision.datasets.MNIST(path,train=False,transform=transform,download=False)
-#使用dataloader方法开始训练
-#设定batch大小
-BATCH_SIZE=1000
-#构建dataloader
-TrainDataLoader = torch.utils.data.DataLoader(dataset = trainData,batch_size=BATCH_SIZE)
-TestDataLoader = torch.utils.data.DataLoader(dataset=testData,batch_size=BATCH_SIZE)
-#构建神经网络
+Batch_Size = 300
+#shuffle=true是用来打乱数据集的
+train_Dataloader = DataLoader(trainData,batch_size = Batch_Size,shuffle = True)
+test_DataLoader = DataLoader(testData,batch_size=Batch_Size,shuffle=False)
 class Net(torch.nn.Module):
     #构造函数
     def __init__(self):
         #继承父类
         super(Net,self).__init__()
-        self.model = torch.nn.Sequential(
-            torch.nn.Conv2d(in_channels=1,out_channels=16,kernel_size=3,stride=1,padding=1),
+        self.conv1=torch.nn.Sequential(
+            #torch.nn.Conv2d(in_channels,out_channels,卷积核大小,步长,填充)
+            torch.nn.Conv2d(1,10,kernel_size=5),
+            #torch.nn.RelU()激活函数
             torch.nn.ReLU(),
-            torch.nn.MaxPool2d(kernel_size = 2,stride = 2),
-            
-            #The size of the picture is 14x14
-            torch.nn.Conv2d(in_channels = 16,out_channels = 32,kernel_size = 3,stride = 1,padding = 1),
-            torch.nn.ReLU(),
-            torch.nn.MaxPool2d(kernel_size = 2,stride = 2),
-            
-            #The size of the picture is 7x7
-            torch.nn.Conv2d(in_channels = 32,out_channels = 64,kernel_size = 3,stride = 1,padding = 1),
-            torch.nn.ReLU(),
-
-            torch.nn.Flatten(),
-            torch.nn.Linear(in_features = 7 * 7 * 64,out_features = 128),
-            torch.nn.ReLU(),
-            torch.nn.Linear(in_features = 128,out_features = 10),
-            torch.nn.Softmax(dim=1)
+            torch.nn.MaxPool2d(kernel_size=2)
         )
-        
-    def forward(self,input):
-        output = self.model(input)
-        return output
-net = Net().to(device)
-#构建迭代器与损失函数
-#对于简单的多分类任务，我们可以使用交叉熵损失来作为损失函数；而对于迭代器而言，我们可以使用Adam迭代器
-lossF = torch.nn.CrossEntropyLoss()
-optimizer = torch.optim.Adam(net.parameters())
-#循环训练
-Epochs=54
-for epochs in range(0,Epochs):
-    #训练内容
-    processBar = tqdm(TrainDataLoader,unit = 'step')
-    net.train(True)
-    for step,(trainImgs,labels) in enumerate(processBar):
-        trainImgs = trainImgs.to(device)
-        labels = labels.to(device)
-        net.zero_grad()
-        outputs = net(trainImgs)
-        loss = lossF(outputs,labels)
-        predictions = torch.argmax(outputs, dim = 1)
-        accuracy = torch.sum(predictions == labels)/labels.shape[0]
+        self.fc=torch.nn.Sequential(
+            torch.nn.Linear(64,10)
+        )
+
+    def forward(self,x):
+        x=self.conv1(x)
+        x=x.view(Batch_Size,-1)
+        x=self.fc(x)
+        return x
+
+model = Net()
+#使用交叉墒损失做损失函数
+sunshi = torch.nn.CrossEntropyLoss()
+#优化器：随机梯度下降
+#lr=学习率，momentum = 冲量
+optimizer = torch.optim.SGD(model.parameters(),lr=0.25,momentum=0.25)
+#训练
+def train(epoch):
+    running_loss = 0.0
+    running_total=0
+    running_correct = 0
+    for batch_idx,data in enumerate(train_Dataloader,0):
+        inputs,target = data
+        #梯度归零
+        optimizer.zero_grad()
+
+        outputs = model(inputs)
+        loss = criterion(outputs,target)
+        #反向传播
         loss.backward()
         optimizer.step()
-        processBar.set_description("[%d/%d] Loss: %.4f, Acc: %.4f" % 
-                                   (epochs,Epochs,loss.item(),accuracy.item()))
-        
-        
+
+        running_loss += loss.item()
+        #准确率
+        predicted = torch.max(outputs.data,dim=1)
+        running_total+=inputs.shape[0]
+        running_correct +=(predicted == target).sum().item()
+        print('[%d,%5d]:loss:%.3f,acc:%.2f',epoch+1,batch_idx+1,running_loss,running_correct/running_total)
+#测试
+def test():
+    correct =0
+    total = 0
+    #
+    with torch.no_grad():
+        for data in test_DataLoader:
+            images,labels = data
+            outputs = model(images)
+            predicted = torch.max(outputs.data,dim=1)
+            total += labels.size(0)
+            correct +=(predicted == labels).sum().item()
+    accuracy = correct/total
+    print('[%d/%d]Accuracy: %.lf %%', epoch+1,EPOCH,accuracy)
+    return accuracy
+
+#
+EPOCH =10
+
+if __name__ ==' __main__':
+    acc_list_test =[]
+    for epoch in range(EPOCH):
+        train(epoch)
+        #每训练10轮测试一次
+        if epoch % 10 ==9:
+            acc_test = test()
+            acc_list_test.append(acc_test)
